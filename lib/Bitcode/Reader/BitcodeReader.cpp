@@ -1934,7 +1934,7 @@ error_code BitcodeReader::ParseModule(bool Resume) {
     }
     // FUNCTION:  [type, callingconv, isproto, linkage, paramattr,
     //             alignment, section, visibility, gc, unnamed_addr,
-    //             dllstorageclass]
+    //             offset, dllstorageclass]
     case bitc::MODULE_CODE_FUNCTION: {
       if (Record.size() < 8)
         return Error(InvalidRecord);
@@ -1977,9 +1977,11 @@ error_code BitcodeReader::ParseModule(bool Resume) {
       Func->setUnnamedAddr(UnnamedAddr);
       if (Record.size() > 10 && Record[10] != 0)
         FunctionPrefixes.push_back(std::make_pair(Func, Record[10]-1));
-
       if (Record.size() > 11)
-        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[11]));
+        Func->setSymbolOffset(Record[11]);
+
+      if (Record.size() > 12)
+        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[12]));
       else
         UpgradeDLLImportExportLinkage(Func, Record[3]);
 

@@ -381,6 +381,7 @@ void Function::copyAttributesFrom(const GlobalValue *Src) {
     setPrefixData(SrcF->getPrefixData());
   else
     setPrefixData(nullptr);
+  setSymbolOffset(SrcF->getSymbolOffset());
 }
 
 /// getIntrinsicID - This method returns the ID number of the specified
@@ -805,4 +806,12 @@ void Function::setPrefixData(Constant *PrefixData) {
     SCData &= ~2;
   }
   setValueSubclassData(SCData);
+}
+
+signed Function::getSymbolOffset() const {
+  return this->SymbolOffset;
+}
+
+void Function::setSymbolOffset(signed Offset) {
+  this->SymbolOffset = Offset;
 }

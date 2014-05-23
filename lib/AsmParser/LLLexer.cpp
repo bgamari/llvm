@@ -548,6 +548,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(inteldialect);
   KEYWORD(gc);
   KEYWORD(prefix);
+  KEYWORD(symbol_offset);
 
   KEYWORD(ccc);
   KEYWORD(fastcc);

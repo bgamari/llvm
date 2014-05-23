@@ -1128,6 +1128,19 @@ bool LLParser::ParseStringConstant(std::string &Result) {
   return false;
 }
 
+/// ParseInt32
+///   ::= int32
+bool LLParser::ParseInt32(signed &Val) {
+  if (Lex.getKind() != lltok::APSInt)
+    return TokError("expected integer");
+  int64_t Val64 = Lex.getAPSIntVal().getLimitedValue(0x7FFFFFFFULL+1);
+  if (Val64 != signed(Val64))
+    return TokError("expected 32-bit integer (too large)");
+  Val = Val64;
+  Lex.Lex();
+  return false;
+}
+
 /// ParseUInt32
 ///   ::= uint32
 bool LLParser::ParseUInt32(unsigned &Val) {
@@ -3016,7 +3029,7 @@ bool LLParser::ParseTypeAndBasicBlock(BasicBlock *&BB, LocTy &Loc,
 /// FunctionHeader
 ///   ::= OptionalLinkage OptionalVisibility OptionalCallingConv OptRetAttrs
 ///       OptUnnamedAddr Type GlobalName '(' ArgList ')' OptFuncAttrs OptSection
-///       OptionalAlign OptGC OptionalPrefix
+///       OptionalAlign OptGC OptionalPrefix OptionalSymbolOffset
 bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
   // Parse the linkage.
   LocTy LinkageLoc = Lex.getLoc();
@@ -3097,6 +3110,7 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
   bool UnnamedAddr;
   LocTy UnnamedAddrLoc;
   Constant *Prefix = nullptr;
+  signed Offset = 0;
 
   if (ParseArgumentList(ArgList, isVarArg) ||
       ParseOptionalToken(lltok::kw_unnamed_addr, UnnamedAddr,
@@ -3109,7 +3123,9 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
       (EatIfPresent(lltok::kw_gc) &&
        ParseStringConstant(GC)) ||
       (EatIfPresent(lltok::kw_prefix) &&
-       ParseGlobalTypeAndValue(Prefix)))
+       ParseGlobalTypeAndValue(Prefix)) ||
+      (EatIfPresent(lltok::kw_symbol_offset) &&
+       ParseInt32(Offset)))
     return true;
 
   if (FuncAttrs.contains(Attribute::Builtin))
@@ -3209,6 +3225,7 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
   Fn->setSection(Section);
   if (!GC.empty()) Fn->setGC(GC.c_str());
   Fn->setPrefixData(Prefix);
+  Fn->setSymbolOffset(Offset);
   ForwardRefAttrGroups[Fn] = FwdRefAttrGrps;
 
   // Add all of the arguments we parsed to the function.

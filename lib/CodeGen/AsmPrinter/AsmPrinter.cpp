@@ -556,10 +556,24 @@ void AsmPrinter::EmitFunctionHeader() {
 /// EmitFunctionEntryLabel - Emit the label that is the entrypoint for the
 /// function.  This can be overridden by targets as required to do custom stuff.
 void AsmPrinter::EmitFunctionEntryLabel() {
+  const Function *F = MF->getFunction();
+
   // The function label could have already been emitted if two symbols end up
   // conflicting due to asm renaming.  Detect this and emit an error.
-  if (CurrentFnSym->isUndefined())
-    return OutStreamer.EmitLabel(CurrentFnSym);
+  if (CurrentFnSym->isUndefined()) {
+    if (F->getSymbolOffset() != 0) {
+      MCSymbol *dummySym = OutContext.CreateTempSymbol();
+      OutStreamer.EmitLabel(dummySym);
+
+      const MCExpr *symRefExpr = MCSymbolRefExpr::Create(dummySym, OutContext);
+      const MCExpr *constExpr = MCConstantExpr::Create(F->getSymbolOffset(), OutContext);
+      const MCExpr *addExpr = MCBinaryExpr::CreateAdd(symRefExpr, constExpr, OutContext);
+      OutStreamer.EmitAssignment(CurrentFnSym, addExpr);
+      return;
+    } else {
+      return OutStreamer.EmitLabel(CurrentFnSym);
+    }
+  }
 
   report_fatal_error("'" + Twine(CurrentFnSym->getName()) +
                      "' label emitted multiple times to assembly file");

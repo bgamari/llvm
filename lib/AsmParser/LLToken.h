@@ -84,6 +84,7 @@ namespace lltok {
     kw_inteldialect,
     kw_gc,
     kw_prefix,
+    kw_symbol_offset,
     kw_c,
 
     kw_cc, kw_ccc, kw_fastcc, kw_coldcc,

@@ -642,7 +642,7 @@ static void WriteModuleInfo(const Module *M, const ValueEnumerator &VE,
   // Emit the function proto information.
   for (Module::const_iterator F = M->begin(), E = M->end(); F != E; ++F) {
     // FUNCTION:  [type, callingconv, isproto, linkage, paramattrs, alignment,
-    //             section, visibility, gc, unnamed_addr, prefix]
+    //             section, visibility, gc, unnamed_addr, prefix, offset]
     Vals.push_back(VE.getTypeID(F->getType()));
     Vals.push_back(F->getCallingConv());
     Vals.push_back(F->isDeclaration());
@@ -655,6 +655,7 @@ static void WriteModuleInfo(const Module *M, const ValueEnumerator &VE,
     Vals.push_back(F->hasUnnamedAddr());
     Vals.push_back(F->hasPrefixData() ? (VE.getValueID(F->getPrefixData()) + 1)
                                       : 0);
+    Vals.push_back(F->getSymbolOffset());
     Vals.push_back(getEncodedDLLStorageClass(F));
 
     unsigned AbbrevToUse = 0;

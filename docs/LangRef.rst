@@ -611,8 +611,9 @@ an optional ``unnamed_addr`` attribute, a return type, an optional
 name, a (possibly empty) argument list (each with optional :ref:`parameter
 attributes <paramattrs>`), optional :ref:`function attributes <fnattrs>`,
 an optional section, an optional alignment, an optional :ref:`garbage
-collector name <gc>`, an optional :ref:`prefix <prefixdata>`, an opening
-curly brace, a list of basic blocks, and a closing curly brace.
+collector name <gc>`, an optional :ref:`prefix <prefixdata>`, an optional
+:ref:`symbol_offset <symboloffset>`, an opening curly brace, a list of
+basic blocks, and a closing curly brace.
 
 LLVM function declarations consist of the "``declare``" keyword, an
 optional :ref:`linkage type <linkage>`, an optional :ref:`visibility
@@ -621,7 +622,8 @@ an optional :ref:`calling convention <callingconv>`,
 an optional ``unnamed_addr`` attribute, a return type, an optional
 :ref:`parameter attribute <paramattrs>` for the return type, a function
 name, a possibly empty list of arguments, an optional alignment, an optional
-:ref:`garbage collector name <gc>` and an optional :ref:`prefix <prefixdata>`.
+:ref:`garbage collector name <gc>`, an optional :ref:`prefix <prefixdata>`, and
+an optional :ref:`symbol_offset <symbolofffset>`.
 
 A function definition contains a list of basic blocks, forming the CFG (Control
 Flow Graph) for the function. Each basic block may optionally start with a label
@@ -657,7 +659,7 @@ Syntax::
            [cconv] [ret attrs]
            <ResultType> @<FunctionName> ([argument list])
            [unnamed_addr] [fn Attrs] [section "name"] [align N]
-           [gc] [prefix Constant] { ... }
+           [gc] [prefix Constant] [symbol_offset N] { ... }
 
 .. _langref_aliases:
 
@@ -893,6 +895,9 @@ the inliner and other passes to reason about the semantics of the function
 definition without needing to reason about the prefix data.  Obviously this
 makes the format of the prefix data highly target dependent.
 
+Alternatively, the :ref:`symbol_offset` attribute can be used to move
+the function entry point to after the prefix data.
+
 Prefix data is laid out as if it were an initializer for a global variable
 of the prefix data's type.  No padding is automatically placed between the
 prefix data and the function body.  If padding is required, it must be part
@@ -918,6 +923,16 @@ x86_64 architecture, where the first two bytes encode ``jmp .+10``:
 A function may have prefix data but no body.  This has similar semantics
 to the ``available_externally`` linkage in that the data may be used by the
 optimizers but will not be emitted in the object file.
+
+.. _symboloffset:
+
+Symbol Offset
+-------------
+
+The `symbol_offset` attribute allows the value of the symbol in the
+produced object file to be offset from the beginning of the function
+definition. This can be used in conjunction with the :ref:`prefix`
+attribute to insert prefix data before the definition of a function.
 
 .. _attrgrp:
 

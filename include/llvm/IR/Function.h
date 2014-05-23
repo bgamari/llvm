@@ -86,6 +86,7 @@ private:
   mutable ArgumentListType ArgumentList;  ///< The formal arguments
   ValueSymbolTable *SymTab;               ///< Symbol table of args/instructions
   AttributeSet AttributeSets;             ///< Parameter attributes
+  signed SymbolOffset;                    ///< Symbol offset
 
   // HasLazyArguments is stored in Value::SubclassData.
   /*bool HasLazyArguments;*/
@@ -444,6 +445,9 @@ public:
 
   Constant *getPrefixData() const;
   void setPrefixData(Constant *PrefixData);
+
+  signed getSymbolOffset() const;
+  void setSymbolOffset(signed Offset);
 
   /// viewCFG - This function is meant for use from the debugger.  You can just
   /// say 'call F->viewCFG()' and a ghostview window should pop up from the

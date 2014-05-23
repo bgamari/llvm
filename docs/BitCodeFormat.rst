@@ -727,7 +727,7 @@ global variable. The operand fields are:
 MODULE_CODE_FUNCTION Record
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``[FUNCTION, type, callingconv, isproto, linkage, paramattr, alignment, section, visibility, gc, prefix, dllstorageclass]``
+``[FUNCTION, type, callingconv, isproto, linkage, paramattr, alignment, section, visibility, gc, prefix, offset, dllstorageclass]``
 
 The ``FUNCTION`` record (code 8) marks the declaration or definition of a
 function. The operand fields are:
@@ -772,6 +772,9 @@ function. The operand fields are:
 
 * *prefix*: If non-zero, the value index of the prefix data for this function,
   plus 1.
+
+* *offset*: The offset of the symbol value relative to the beginning
+  of the function.
 
 * *dllstorageclass*: An encoding of the `dllstorageclass`_ of this function
 
