@@ -1657,8 +1657,11 @@ void AssemblyWriter::printFunction(const Function *F) {
     Out << " prefix ";
     writeOperand(F->getPrefixData(), true);
   }
-  if (F->getSymbolOffset() != 0)
-    Out << " symbol_offset " << F->getSymbolOffset();
+  if (F->hasSymbolOffset()) {
+    Out << " symbol_offset ";
+    writeOperand(F->getSymbolOffset(), true);
+  }
+
   if (F->isDeclaration()) {
     Out << '\n';
   } else {

@@ -142,6 +142,7 @@ class BitcodeReader : public GVMaterializer {
   std::vector<std::pair<GlobalVariable*, unsigned> > GlobalInits;
   std::vector<std::pair<GlobalAlias*, unsigned> > AliasInits;
   std::vector<std::pair<Function*, unsigned> > FunctionPrefixes;
+  std::vector<std::pair<Function*, unsigned> > FunctionOffsets;
 
   SmallVector<Instruction*, 64> InstsWithTBAATag;
 

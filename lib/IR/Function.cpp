@@ -265,7 +265,7 @@ void Function::BuildLazyArguments() const {
 
   // Clear the lazy arguments bit.
   unsigned SDC = getSubclassDataFromValue();
-  const_cast<Function*>(this)->setValueSubclassData(SDC &= ~1);
+  const_cast<Function*>(this)->setValueSubclassData(SDC &= ~(1<<0));
 }
 
 size_t Function::arg_size() const {
@@ -302,6 +302,9 @@ void Function::dropAllReferences() {
 
   // Prefix data is stored in a side table.
   setPrefixData(nullptr);
+
+  // Symbol offset is stored in a side table.
+  setSymbolOffset(nullptr);
 }
 
 void Function::addAttribute(unsigned i, Attribute::AttrKind attr) {
@@ -381,7 +384,10 @@ void Function::copyAttributesFrom(const GlobalValue *Src) {
     setPrefixData(SrcF->getPrefixData());
   else
     setPrefixData(nullptr);
-  setSymbolOffset(SrcF->getSymbolOffset());
+  if (SrcF->hasSymbolOffset())
+    setSymbolOffset(SrcF->getSymbolOffset());
+  else
+    setSymbolOffset(nullptr);
 }
 
 /// getIntrinsicID - This method returns the ID number of the specified
@@ -799,19 +805,40 @@ void Function::setPrefixData(Constant *PrefixData) {
       PDHolder->setOperand(0, PrefixData);
     else
       PDHolder = ReturnInst::Create(getContext(), PrefixData);
-    SCData |= 2;
+    SCData |= (1<<1);
   } else {
     delete PDHolder;
     PDMap.erase(this);
-    SCData &= ~2;
+    SCData &= ~(1<<1);
   }
   setValueSubclassData(SCData);
 }
 
-signed Function::getSymbolOffset() const {
-  return this->SymbolOffset;
+Constant *Function::getSymbolOffset() const {
+  assert(hasSymbolOffset());
+  const LLVMContextImpl::SymbolOffsetMapTy &SOMap =
+      getContext().pImpl->SymbolOffsetMap;
+  assert(SOMap.find(this) != SOMap.end());
+  return cast<Constant>(SOMap.find(this)->second->getReturnValue());
 }
 
-void Function::setSymbolOffset(signed Offset) {
-  this->SymbolOffset = Offset;
+void Function::setSymbolOffset(Constant *Offset) {
+  if (!Offset && !hasSymbolOffset())
+    return;
+
+  unsigned SCData = getSubclassDataFromValue();
+  LLVMContextImpl::SymbolOffsetMapTy &SOMap = getContext().pImpl->SymbolOffsetMap;
+  ReturnInst *&SOHolder = SOMap[this];
+  if (Offset) {
+    if (SOHolder)
+      SOHolder->setOperand(0, Offset);
+    else
+      SOHolder = ReturnInst::Create(getContext(), Offset);
+    SCData |= (1<<2);
+  } else {
+    delete SOHolder;
+    SOMap.erase(this);
+    SCData &= ~(1<<2);
+  }
+  setValueSubclassData(SCData);
 }

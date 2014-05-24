@@ -3110,7 +3110,7 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
   bool UnnamedAddr;
   LocTy UnnamedAddrLoc;
   Constant *Prefix = nullptr;
-  signed Offset = 0;
+  Constant *Offset = nullptr;
 
   if (ParseArgumentList(ArgList, isVarArg) ||
       ParseOptionalToken(lltok::kw_unnamed_addr, UnnamedAddr,
@@ -3125,7 +3125,7 @@ bool LLParser::ParseFunctionHeader(Function *&Fn, bool isDefine) {
       (EatIfPresent(lltok::kw_prefix) &&
        ParseGlobalTypeAndValue(Prefix)) ||
       (EatIfPresent(lltok::kw_symbol_offset) &&
-       ParseInt32(Offset)))
+       ParseGlobalTypeAndValue(Offset)))
     return true;
 
   if (FuncAttrs.contains(Attribute::Builtin))

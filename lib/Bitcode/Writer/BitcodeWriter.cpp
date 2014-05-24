@@ -655,7 +655,8 @@ static void WriteModuleInfo(const Module *M, const ValueEnumerator &VE,
     Vals.push_back(F->hasUnnamedAddr());
     Vals.push_back(F->hasPrefixData() ? (VE.getValueID(F->getPrefixData()) + 1)
                                       : 0);
-    Vals.push_back(F->getSymbolOffset());
+    Vals.push_back(F->hasSymbolOffset() ? (VE.getValueID(F->getSymbolOffset()) + 1)
+                                      : 0);
     Vals.push_back(getEncodedDLLStorageClass(F));
 
     unsigned AbbrevToUse = 0;

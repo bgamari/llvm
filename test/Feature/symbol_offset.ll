@@ -4,7 +4,7 @@
 ; RUN: diff %t1.ll %t2.ll
 ; RUN: opt -O3 -S < %t1.ll | FileCheck %s
 
-; CHECK: f(){{.*}}symbol_offset 1
-define void @f() symbol_offset 1 {
+; CHECK: f(){{.*}}symbol_offset i32 1
+define void @f() symbol_offset i32 1 {
   ret void
 }

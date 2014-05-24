@@ -374,6 +374,12 @@ public:
   typedef DenseMap<const Function *, ReturnInst *> PrefixDataMapTy;
   PrefixDataMapTy PrefixDataMap;
 
+  /// \brief Mapping from a function to its symbol offset, which is stored as
+  /// the operand of an unparented ReturnInst so that the prefix data has a
+  /// Use.
+  typedef DenseMap<const Function *, ReturnInst *> SymbolOffsetMapTy;
+  SymbolOffsetMapTy SymbolOffsetMap;
+
   int getOrAddScopeRecordIdxEntry(MDNode *N, int ExistingIdx);
   int getOrAddScopeInlinedAtIdxEntry(MDNode *Scope, MDNode *IA,int ExistingIdx);
   

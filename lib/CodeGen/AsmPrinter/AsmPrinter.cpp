@@ -63,6 +63,8 @@ STATISTIC(EmittedInsts, "Number of machine instrs printed");
 
 char AsmPrinter::ID = 0;
 
+static const MCExpr *lowerConstant(const Constant *CV, AsmPrinter &AP);
+
 typedef DenseMap<GCStrategy*, std::unique_ptr<GCMetadataPrinter>> gcp_map_type;
 static gcp_map_type &getGCMap(void *&P) {
   if (!P)
@@ -561,14 +563,14 @@ void AsmPrinter::EmitFunctionEntryLabel() {
   // The function label could have already been emitted if two symbols end up
   // conflicting due to asm renaming.  Detect this and emit an error.
   if (CurrentFnSym->isUndefined()) {
-    if (F->getSymbolOffset() != 0) {
+    if (F->hasSymbolOffset()) {
       MCSymbol *dummySym = OutContext.CreateTempSymbol();
       OutStreamer.EmitLabel(dummySym);
 
       const MCExpr *symRefExpr = MCSymbolRefExpr::Create(dummySym, OutContext);
-      const MCExpr *constExpr = MCConstantExpr::Create(F->getSymbolOffset(), OutContext);
-      const MCExpr *addExpr = MCBinaryExpr::CreateAdd(symRefExpr, constExpr, OutContext);
-      OutStreamer.EmitAssignment(CurrentFnSym, addExpr);
+      const MCExpr *offsetExpr = lowerConstant(F->getSymbolOffset(), *this);
+      const MCExpr *sumExpr = MCBinaryExpr::CreateAdd(symRefExpr, offsetExpr, OutContext);
+      OutStreamer.EmitAssignment(CurrentFnSym, sumExpr);
       return;
     } else {
       return OutStreamer.EmitLabel(CurrentFnSym);
