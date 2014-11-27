@@ -1152,10 +1152,12 @@ std::error_code BitcodeReader::ResolveGlobalAndAliasInits() {
   std::vector<std::pair<GlobalVariable*, unsigned> > GlobalInitWorklist;
   std::vector<std::pair<GlobalAlias*, unsigned> > AliasInitWorklist;
   std::vector<std::pair<Function*, unsigned> > FunctionPrefixWorklist;
+  std::vector<std::pair<Function*, unsigned> > FunctionPrologueWorklist;
 
   GlobalInitWorklist.swap(GlobalInits);
   AliasInitWorklist.swap(AliasInits);
   FunctionPrefixWorklist.swap(FunctionPrefixes);
+  FunctionPrologueWorklist.swap(FunctionPrologues);
 
   while (!GlobalInitWorklist.empty()) {
     unsigned ValID = GlobalInitWorklist.back().second;
@@ -1195,6 +1197,19 @@ std::error_code BitcodeReader::ResolveGlobalAndAliasInits() {
         return Error(BitcodeError::ExpectedConstant);
     }
     FunctionPrefixWorklist.pop_back();
+  }
+
+  while (!FunctionPrologueWorklist.empty()) {
+    unsigned ValID = FunctionPrologueWorklist.back().second;
+    if (ValID >= ValueList.size()) {
+      FunctionPrologues.push_back(FunctionPrologueWorklist.back());
+    } else {
+      if (Constant *C = dyn_cast_or_null<Constant>(ValueList[ValID]))
+        FunctionPrologueWorklist.back().first->setPrologueData(C);
+      else
+        return Error(BitcodeError::ExpectedConstant);
+    }
+    FunctionPrologueWorklist.pop_back();
   }
 
   return std::error_code();
@@ -2011,7 +2026,7 @@ std::error_code BitcodeReader::ParseModule(bool Resume) {
     }
     // FUNCTION:  [type, callingconv, isproto, linkage, paramattr,
     //             alignment, section, visibility, gc, unnamed_addr,
-    //             dllstorageclass]
+    //             prefix, prologue, dllstorageclass]
     case bitc::MODULE_CODE_FUNCTION: {
       if (Record.size() < 8)
         return Error(BitcodeError::InvalidRecord);
@@ -2054,14 +2069,16 @@ std::error_code BitcodeReader::ParseModule(bool Resume) {
       Func->setUnnamedAddr(UnnamedAddr);
       if (Record.size() > 10 && Record[10] != 0)
         FunctionPrefixes.push_back(std::make_pair(Func, Record[10]-1));
+      if (Record.size() > 11 && Record[11] != 0)
+        FunctionPrologues.push_back(std::make_pair(Func, Record[11]-1));
 
-      if (Record.size() > 11)
-        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[11]));
+      if (Record.size() > 12)
+        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[12]));
       else
         UpgradeDLLImportExportLinkage(Func, Record[3]);
 
-      if (Record.size() > 12)
-        if (unsigned ComdatID = Record[12]) {
+      if (Record.size() > 13)
+        if (unsigned ComdatID = Record[13]) {
           assert(ComdatID <= ComdatList.size());
           Func->setComdat(ComdatList[ComdatID - 1]);
         }
