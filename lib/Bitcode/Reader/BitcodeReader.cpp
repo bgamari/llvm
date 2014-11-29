@@ -2068,20 +2068,21 @@ std::error_code BitcodeReader::ParseModule(bool Resume) {
         UnnamedAddr = Record[9];
       Func->setUnnamedAddr(UnnamedAddr);
       if (Record.size() > 10 && Record[10] != 0)
-        FunctionPrefixes.push_back(std::make_pair(Func, Record[10]-1));
-      if (Record.size() > 11 && Record[11] != 0)
-        FunctionPrologues.push_back(std::make_pair(Func, Record[11]-1));
+        FunctionPrologues.push_back(std::make_pair(Func, Record[10]-1));
 
-      if (Record.size() > 12)
-        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[12]));
+      if (Record.size() > 11)
+        Func->setDLLStorageClass(GetDecodedDLLStorageClass(Record[11]));
       else
         UpgradeDLLImportExportLinkage(Func, Record[3]);
 
-      if (Record.size() > 13)
-        if (unsigned ComdatID = Record[13]) {
+      if (Record.size() > 12)
+        if (unsigned ComdatID = Record[12]) {
           assert(ComdatID <= ComdatList.size());
           Func->setComdat(ComdatList[ComdatID - 1]);
         }
+
+      if (Record.size() > 13 && Record[13] != 0)
+        FunctionPrefixes.push_back(std::make_pair(Func, Record[13]-1));
 
       ValueList.push_back(Func);
 
