@@ -1150,19 +1150,6 @@ bool LLParser::ParseStringConstant(std::string &Result) {
   return false;
 }
 
-/// ParseInt32
-///   ::= int32
-bool LLParser::ParseInt32(signed &Val) {
-  if (Lex.getKind() != lltok::APSInt)
-    return TokError("expected integer");
-  int64_t Val64 = Lex.getAPSIntVal().getLimitedValue(0x7FFFFFFFULL+1);
-  if (Val64 != signed(Val64))
-    return TokError("expected 32-bit integer (too large)");
-  Val = Val64;
-  Lex.Lex();
-  return false;
-}
-
 /// ParseUInt32
 ///   ::= uint32
 bool LLParser::ParseUInt32(unsigned &Val) {
