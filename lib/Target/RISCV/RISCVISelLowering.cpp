@@ -915,6 +915,19 @@ SDValue RISCVTargetLowering::getAddrPIC(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getNode(RISCVISD::PCREL_WRAPPER, DL, Ty, Op);
 }
 
+CCAssignFn *RISCVTargetLowering::getCCAssignFn(CallLoweringInfo &CLI) const {
+  bool IsVarArg = CLI.IsVarArg;
+  CallingConv::ID CallConv = CLI.CallConv;
+
+  if (CallConv == CallingConv::GHC) {
+    assert(!IsRV32);
+    return CC_RISCV64_GHC;
+  }
+
+  return IsRV32 ? IsVarArg ? CC_RISCV32_VAR : CC_RISCV32 :
+         IsVarArg ? CC_RISCV64_VAR : CC_RISCV64;
+}
+
 SDValue
 RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
                                  SmallVectorImpl<SDValue> &InVals) const {
@@ -938,8 +951,7 @@ RISCVTargetLowering::LowerCall(CallLoweringInfo &CLI,
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
 
-  CCAssignFn *CC = IsRV32 ? IsVarArg ? CC_RISCV32_VAR : CC_RISCV32 :
-                           IsVarArg ? CC_RISCV64_VAR : CC_RISCV64;
+  CCAssignFn *CC = getCCAssignFn(CLI);
   CCInfo.AnalyzeCallOperands(Outs, CC);
   //
   // Get a count of how many bytes are to be pushed on the stack.

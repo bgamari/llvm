@@ -150,6 +150,24 @@ def CC_RISCV64_VAR : CallingConv<[
 ]>;
 
 //===----------------------------------------------------------------------===//
+// RV64 argument calling convention for GHC
+//===----------------------------------------------------------------------===//
+def CC_RISCV64_GHC : CallingConv<[
+  //Always assign the sret pointer to the first arg reg
+  CCIfSRet<CCAssignToReg<[a0_64]>>,
+
+  //Promote small int types to i32
+  CCIfType<[i8, i16, i32], CCPromoteToType<i64>>,
+
+  CCIfType<[f64], CCAssignToReg<[fa0_64, fa1_64, fa2_64, fa3_64]>>,
+  CCIfType<[f32], CCAssignToReg<[fa4, fa5, fa6, fa7]>>,
+
+  // Pass in STG registers: Base, Sp, Hp, R1, R2, R3, R4, SpLim
+  CCIfType<[i64], CCAssignToReg<
+      [gp_64, sp_64, tp_64, t0_64, t1_64, t2_64, a0_64, fp_64]>>
+]>;
+
+//===----------------------------------------------------------------------===//
 // Callee-saved register lists.
 //===----------------------------------------------------------------------===//
 

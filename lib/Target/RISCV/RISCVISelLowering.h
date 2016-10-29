@@ -208,6 +208,7 @@ private:
   SDValue getTargetNode(SDValue Op, SelectionDAG &DAG, unsigned Flag) const;
   SDValue getAddrNonPIC(SDValue Op, SelectionDAG &DAG) const;
   SDValue getAddrPIC(SDValue Op, SelectionDAG &DAG) const;
+  CCAssignFn *getCCAssignFn(CallLoweringInfo &CLI) const;
 
   // Implement EmitInstrWithCustomInserter for individual operation types.
   MachineBasicBlock *emitCALL(MachineInstr &MI,
