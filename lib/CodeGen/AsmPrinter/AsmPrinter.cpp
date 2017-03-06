@@ -636,8 +636,14 @@ void AsmPrinter::EmitFunctionHeader() {
   if (MAI->hasFunctionAlignment())
     EmitAlignment(MF->getAlignment(), F);
 
-  if (MAI->hasDotTypeDotSizeDirective())
-    OutStreamer->EmitSymbolAttribute(CurrentFnSym, MCSA_ELF_TypeFunction);
+  if (MAI->hasDotTypeDotSizeDirective()) {
+    // We can't treat symbols with prefix data as functions since these
+    // will be relocated via trampoline, which will break references to
+    // prefix data. See #31484.
+    MCSymbolAttr attr =
+      F->hasPrefixData() ? MCSA_ELF_TypeObject : MCSA_ELF_TypeFunction;
+    OutStreamer->EmitSymbolAttribute(CurrentFnSym, attr);
+  }
 
   if (isVerbose()) {
     F->printAsOperand(OutStreamer->GetCommentOS(),
