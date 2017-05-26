@@ -58,12 +58,13 @@ static cl::opt<bool> EnableSelectionDAGSP("enable-selectiondag-sp",
                                           cl::init(true), cl::Hidden);
 
 char StackProtector::ID = 0;
-INITIALIZE_TM_PASS(StackProtector, "stack-protector", "Insert stack protectors",
-                   false, true)
+INITIALIZE_PASS_BEGIN(StackProtector, DEBUG_TYPE,
+                      "Insert stack protectors", false, true)
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+INITIALIZE_PASS_END(StackProtector, DEBUG_TYPE,
+                    "Insert stack protectors", false, true)
 
-FunctionPass *llvm::createStackProtectorPass(const TargetMachine *TM) {
-  return new StackProtector(TM);
-}
+FunctionPass *llvm::createStackProtectorPass() { return new StackProtector(); }
 
 StackProtector::SSPLayoutKind
 StackProtector::getSSPLayout(const AllocaInst *AI) const {
@@ -97,6 +98,8 @@ bool StackProtector::runOnFunction(Function &Fn) {
   DominatorTreeWrapperPass *DTWP =
       getAnalysisIfAvailable<DominatorTreeWrapperPass>();
   DT = DTWP ? &DTWP->getDomTree() : nullptr;
+  TM = &getAnalysis<TargetPassConfig>().getTM<TargetMachine>();
+  Trip = TM->getTargetTriple();
   TLI = TM->getSubtargetImpl(Fn)->getTargetLowering();
   HasPrologue = false;
   HasIRCheck = false;
@@ -234,13 +237,12 @@ bool StackProtector::RequiresStackProtector() {
   // using the analysis pass to avoid building DominatorTree and LoopInfo which
   // are not available this late in the IR pipeline.
   OptimizationRemarkEmitter ORE(F);
-  auto ReasonStub =
-      Twine("Stack protection applied to function " + F->getName() + " due to ")
-          .str();
 
   if (F->hasFnAttribute(Attribute::StackProtectReq)) {
     ORE.emit(OptimizationRemark(DEBUG_TYPE, "StackProtectorRequested", F)
-             << ReasonStub << "a function attribute or command-line switch");
+             << "Stack protection applied to function "
+             << ore::NV("Function", F)
+             << " due to a function attribute or command-line switch");
     NeedsProtector = true;
     Strong = true; // Use the same heuristic as strong to determine SSPLayout
   } else if (F->hasFnAttribute(Attribute::StackProtectStrong))
@@ -256,8 +258,10 @@ bool StackProtector::RequiresStackProtector() {
         if (AI->isArrayAllocation()) {
           OptimizationRemark Remark(DEBUG_TYPE, "StackProtectorAllocaOrArray",
                                     &I);
-          Remark << ReasonStub
-                 << "a call to alloca or use of a variable length array";
+          Remark
+              << "Stack protection applied to function "
+              << ore::NV("Function", F)
+              << " due to a call to alloca or use of a variable length array";
           if (const auto *CI = dyn_cast<ConstantInt>(AI->getArraySize())) {
             if (CI->getLimitedValue(SSPBufferSize) >= SSPBufferSize) {
               // A call to alloca with size >= SSPBufferSize requires
@@ -285,8 +289,10 @@ bool StackProtector::RequiresStackProtector() {
           Layout.insert(std::make_pair(AI, IsLarge ? SSPLK_LargeArray
                                                    : SSPLK_SmallArray));
           ORE.emit(OptimizationRemark(DEBUG_TYPE, "StackProtectorBuffer", &I)
-                   << ReasonStub
-                   << "a stack allocated buffer or struct containing a buffer");
+                   << "Stack protection applied to function "
+                   << ore::NV("Function", F)
+                   << " due to a stack allocated buffer or struct containing a "
+                      "buffer");
           NeedsProtector = true;
           continue;
         }
@@ -296,7 +302,9 @@ bool StackProtector::RequiresStackProtector() {
           Layout.insert(std::make_pair(AI, SSPLK_AddrOf));
           ORE.emit(
               OptimizationRemark(DEBUG_TYPE, "StackProtectorAddressTaken", &I)
-              << ReasonStub << "the address of a local variable being taken");
+              << "Stack protection applied to function "
+              << ore::NV("Function", F)
+              << " due to the address of a local variable being taken");
           NeedsProtector = true;
         }
       }
@@ -479,13 +487,13 @@ BasicBlock *StackProtector::CreateFailBB() {
     Constant *StackChkFail =
         M->getOrInsertFunction("__stack_smash_handler",
                                Type::getVoidTy(Context),
-                               Type::getInt8PtrTy(Context), nullptr);
+                               Type::getInt8PtrTy(Context));
 
     B.CreateCall(StackChkFail, B.CreateGlobalStringPtr(F->getName(), "SSH"));
   } else {
     Constant *StackChkFail =
-        M->getOrInsertFunction("__stack_chk_fail", Type::getVoidTy(Context),
-                               nullptr);
+        M->getOrInsertFunction("__stack_chk_fail", Type::getVoidTy(Context));
+
     B.CreateCall(StackChkFail, {});
   }
   B.CreateUnreachable();

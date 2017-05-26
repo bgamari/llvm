@@ -490,6 +490,7 @@ NVPTXTargetLowering::NVPTXTargetLowering(const NVPTXTargetMachine &TM,
   setOperationAction(ISD::INTRINSIC_W_CHAIN, MVT::i8, Custom);
 
   for (const auto& Ty : {MVT::i16, MVT::i32, MVT::i64}) {
+    setOperationAction(ISD::ABS,  Ty, Legal);
     setOperationAction(ISD::SMIN, Ty, Legal);
     setOperationAction(ISD::SMAX, Ty, Legal);
     setOperationAction(ISD::UMIN, Ty, Legal);
@@ -1429,8 +1430,7 @@ SDValue NVPTXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     return Chain;
 
   SDValue tempChain = Chain;
-  Chain = DAG.getCALLSEQ_START(
-      Chain, DAG.getIntPtrConstant(uniqueCallSite, dl, true), dl);
+  Chain = DAG.getCALLSEQ_START(Chain, uniqueCallSite, 0, dl);
   SDValue InFlag = Chain.getValue(1);
 
   unsigned paramCount = 0;
@@ -1548,7 +1548,9 @@ SDValue NVPTXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
           Chain = DAG.getMemIntrinsicNode(
               Op, dl, DAG.getVTList(MVT::Other, MVT::Glue), StoreOperands,
-              TheStoreType, MachinePointerInfo(), EltAlign);
+              TheStoreType, MachinePointerInfo(), EltAlign,
+              /* Volatile */ false, /* ReadMem */ false,
+              /* WriteMem */ true, /* Size */ 0);
           InFlag = Chain.getValue(1);
 
           // Cleanup.
@@ -1556,7 +1558,7 @@ SDValue NVPTXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
         }
         ++OIdx;
       }
-      assert(StoreOperands.empty() && "Unfinished paramter store.");
+      assert(StoreOperands.empty() && "Unfinished parameter store.");
       if (VTs.size() > 0)
         --OIdx;
       ++paramCount;
@@ -1608,7 +1610,9 @@ SDValue NVPTXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                  theVal, InFlag };
       Chain = DAG.getMemIntrinsicNode(NVPTXISD::StoreParam, dl, CopyParamVTs,
                                       CopyParamOps, elemtype,
-                                      MachinePointerInfo());
+                                      MachinePointerInfo(), /* Align */ 0,
+                                      /* Volatile */ false, /* ReadMem */ false,
+                                      /* WriteMem */ true, /* Size */ 0);
 
       InFlag = Chain.getValue(1);
     }
@@ -1794,7 +1798,8 @@ SDValue NVPTXTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
             DAG.getConstant(Offsets[VecIdx], dl, MVT::i32), InFlag};
         SDValue RetVal = DAG.getMemIntrinsicNode(
             Op, dl, DAG.getVTList(LoadVTs), LoadOperands, TheLoadType,
-            MachinePointerInfo(), EltAlign);
+            MachinePointerInfo(), EltAlign, /* Volatile */ false,
+            /* ReadMem */ true, /* WriteMem */ false, /* Size */ 0);
 
         for (unsigned j = 0; j < NumElts; ++j) {
           SDValue Ret = RetVal.getValue(j);
@@ -2071,8 +2076,21 @@ SDValue NVPTXTargetLowering::LowerSelect(SDValue Op, SelectionDAG &DAG) const {
 SDValue NVPTXTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   if (Op.getValueType() == MVT::i1)
     return LowerLOADi1(Op, DAG);
-  else
-    return SDValue();
+
+  // v2f16 is legal, so we can't rely on legalizer to handle unaligned
+  // loads and have to handle it here.
+  if (Op.getValueType() == MVT::v2f16) {
+    LoadSDNode *Load = cast<LoadSDNode>(Op);
+    EVT MemVT = Load->getMemoryVT();
+    if (!allowsMemoryAccess(*DAG.getContext(), DAG.getDataLayout(), MemVT,
+                            Load->getAddressSpace(), Load->getAlignment())) {
+      SDValue Ops[2];
+      std::tie(Ops[0], Ops[1]) = expandUnalignedLoad(Load, DAG);
+      return DAG.getMergeValues(Ops, SDLoc(Op));
+    }
+  }
+
+  return SDValue();
 }
 
 // v = ld i1* addr
@@ -2098,16 +2116,23 @@ SDValue NVPTXTargetLowering::LowerLOADi1(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue NVPTXTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
-  EVT ValVT = Op.getOperand(1).getValueType();
-  switch (ValVT.getSimpleVT().SimpleTy) {
-  case MVT::i1:
+  StoreSDNode *Store = cast<StoreSDNode>(Op);
+  EVT VT = Store->getMemoryVT();
+
+  if (VT == MVT::i1)
     return LowerSTOREi1(Op, DAG);
-  default:
-    if (ValVT.isVector())
-      return LowerSTOREVector(Op, DAG);
-    else
-      return SDValue();
-  }
+
+  // v2f16 is legal, so we can't rely on legalizer to handle unaligned
+  // stores and have to handle it here.
+  if (VT == MVT::v2f16 &&
+      !allowsMemoryAccess(*DAG.getContext(), DAG.getDataLayout(), VT,
+                          Store->getAddressSpace(), Store->getAlignment()))
+    return expandUnalignedStore(Store, DAG);
+
+  if (VT.isVector())
+    return LowerSTOREVector(Op, DAG);
+
+  return SDValue();
 }
 
 SDValue
@@ -2295,7 +2320,7 @@ SDValue NVPTXTargetLowering::LowerFormalArguments(
   auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   const Function *F = MF.getFunction();
-  const AttributeSet &PAL = F->getAttributes();
+  const AttributeList &PAL = F->getAttributes();
   const TargetLowering *TLI = STI.getTargetLowering();
 
   SDValue Root = DAG.getRoot();
@@ -2375,7 +2400,7 @@ SDValue NVPTXTargetLowering::LowerFormalArguments(
     // to newly created nodes. The SDNodes for params have to
     // appear in the same order as their order of appearance
     // in the original function. "idx+1" holds that order.
-    if (!PAL.hasAttribute(i + 1, Attribute::ByVal)) {
+    if (!PAL.hasParamAttribute(i, Attribute::ByVal)) {
       bool aggregateIsPacked = false;
       if (StructType *STy = dyn_cast<StructType>(Ty))
         aggregateIsPacked = STy->isPacked();
@@ -2558,7 +2583,9 @@ NVPTXTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
       EVT TheStoreType = ExtendIntegerRetVal ? MVT::i32 : VTs[i];
       Chain = DAG.getMemIntrinsicNode(Op, dl, DAG.getVTList(MVT::Other),
                                       StoreOperands, TheStoreType,
-                                      MachinePointerInfo(), 1);
+                                      MachinePointerInfo(), /* Align */ 1,
+                                      /* Volatile */ false, /* ReadMem */ false,
+                                      /* WriteMem */ true, /* Size */ 0);
       // Cleanup vector state.
       StoreOperands.clear();
     }

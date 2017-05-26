@@ -10,6 +10,8 @@ add_llvm_unittest(SupportTests
   BinaryStreamTest.cpp
   BlockFrequencyTest.cpp
   BranchProbabilityTest.cpp
+  CachePruningTest.cpp
+  CrashRecoveryTest.cpp
   Casting.cpp
   Chrono.cpp
   CommandLineTest.cpp
@@ -35,6 +37,7 @@ add_llvm_unittest(SupportTests
   MemoryBufferTest.cpp
   MemoryTest.cpp
   NativeFormatTests.cpp
+  ParallelTest.cpp
   Path.cpp
   ProcessTest.cpp
   ProgramTest.cpp
@@ -66,3 +69,5 @@ add_llvm_unittest(SupportTests
 
 # ManagedStatic.cpp uses <pthread>.
 target_link_libraries(SupportTests ${LLVM_PTHREAD_LIB})
+
+add_subdirectory(DynamicLibrary)

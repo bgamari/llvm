@@ -826,26 +826,35 @@ public:
       getOperand(0).getSubReg() == getOperand(1).getSubReg();
   }
 
-  /// Return true if this is a transient instruction that is
-  /// either very likely to be eliminated during register allocation (such as
-  /// copy-like instructions), or if this instruction doesn't have an
-  /// execution-time cost.
-  bool isTransient() const {
-    switch(getOpcode()) {
-    default: return false;
-    // Copy-like instructions are usually eliminated during register allocation.
-    case TargetOpcode::PHI:
-    case TargetOpcode::COPY:
-    case TargetOpcode::INSERT_SUBREG:
-    case TargetOpcode::SUBREG_TO_REG:
-    case TargetOpcode::REG_SEQUENCE:
-    // Pseudo-instructions that don't produce any real output.
+  /// Return true if this instruction doesn't produce any output in the form of
+  /// executable instructions.
+  bool isMetaInstruction() const {
+    switch (getOpcode()) {
+    default:
+      return false;
     case TargetOpcode::IMPLICIT_DEF:
     case TargetOpcode::KILL:
     case TargetOpcode::CFI_INSTRUCTION:
     case TargetOpcode::EH_LABEL:
     case TargetOpcode::GC_LABEL:
     case TargetOpcode::DBG_VALUE:
+      return true;
+    }
+  }
+
+  /// Return true if this is a transient instruction that is either very likely
+  /// to be eliminated during register allocation (such as copy-like
+  /// instructions), or if this instruction doesn't have an execution-time cost.
+  bool isTransient() const {
+    switch (getOpcode()) {
+    default:
+      return isMetaInstruction();
+    // Copy-like instructions are usually eliminated during register allocation.
+    case TargetOpcode::PHI:
+    case TargetOpcode::COPY:
+    case TargetOpcode::INSERT_SUBREG:
+    case TargetOpcode::SUBREG_TO_REG:
+    case TargetOpcode::REG_SEQUENCE:
       return true;
     }
   }
@@ -1107,6 +1116,18 @@ public:
   /// SawStore is set to true, it means that there is a store (or call) between
   /// the instruction's location and its intended destination.
   bool isSafeToMove(AliasAnalysis *AA, bool &SawStore) const;
+
+  /// Returns true if this instruction's memory access aliases the memory
+  /// access of Other.
+  //
+  /// Assumes any physical registers used to compute addresses
+  /// have the same value for both instructions.  Returns false if neither
+  /// instruction writes to memory.
+  ///
+  /// @param AA Optional alias analysis, used to compare memory operands.
+  /// @param Other MachineInstr to check aliasing against.
+  /// @param UseTBAA Whether to pass TBAA information to alias analysis.
+  bool mayAlias(AliasAnalysis *AA, MachineInstr &Other, bool UseTBAA);
 
   /// Return true if this instruction may have an ordered
   /// or volatile memory reference, or if the information describing the memory

@@ -206,14 +206,16 @@ define i64 @test_i64_args_8(i64 %arg1, i64 %arg2, i64 %arg3, i64 %arg4,
 ; X32-NEXT: [[ARG8L:%[0-9]+]](s32) = G_LOAD [[ARG8L_ADDR]](p0) :: (invariant load 4 from %fixed-stack.[[STACK56]], align 0)
 ; X32-NEXT: [[ARG8H_ADDR:%[0-9]+]](p0) = G_FRAME_INDEX %fixed-stack.[[STACK60]]
 ; X32-NEXT: [[ARG8H:%[0-9]+]](s32) = G_LOAD [[ARG8H_ADDR]](p0) :: (invariant load 4 from %fixed-stack.[[STACK60]], align 0)
-; X32-NEXT: [[ARG1:%[0-9]+]](s64) = G_SEQUENCE [[ARG1L:%[0-9]+]](s32), 0, [[ARG1H:%[0-9]+]](s32), 32
-; X32-NEXT: %{{[0-9]+}}(s64) = G_SEQUENCE %{{[0-9]+}}(s32), 0, %{{[0-9]+}}(s32), 32
-; X32-NEXT: %{{[0-9]+}}(s64) = G_SEQUENCE %{{[0-9]+}}(s32), 0, %{{[0-9]+}}(s32), 32
-; X32-NEXT: %{{[0-9]+}}(s64) = G_SEQUENCE %{{[0-9]+}}(s32), 0, %{{[0-9]+}}(s32), 32
-; X32-NEXT: %{{[0-9]+}}(s64) = G_SEQUENCE %{{[0-9]+}}(s32), 0, %{{[0-9]+}}(s32), 32
-; X32-NEXT: %{{[0-9]+}}(s64) = G_SEQUENCE %{{[0-9]+}}(s32), 0, %{{[0-9]+}}(s32), 32
-; X32-NEXT: [[ARG7:%[0-9]+]](s64) = G_SEQUENCE [[ARG7L:%[0-9]+]](s32), 0, [[ARG7H:%[0-9]+]](s32), 32
-; X32-NEXT: [[ARG8:%[0-9]+]](s64) = G_SEQUENCE [[ARG8L:%[0-9]+]](s32), 0, [[ARG8H:%[0-9]+]](s32), 32
+
+; X32-NEXT: [[ARG1:%[0-9]+]](s64) = G_MERGE_VALUES [[ARG1L]](s32), [[ARG1H]](s32)
+; ... a bunch more that we don't track ...
+; X32-NEXT: G_MERGE_VALUES
+; X32-NEXT: G_MERGE_VALUES
+; X32-NEXT: G_MERGE_VALUES
+; X32-NEXT: G_MERGE_VALUES
+; X32-NEXT: G_MERGE_VALUES
+; X32-NEXT: [[ARG7:%[0-9]+]](s64) = G_MERGE_VALUES [[ARG7L]](s32), [[ARG7H]](s32)
+; X32-NEXT: [[ARG8:%[0-9]+]](s64) = G_MERGE_VALUES [[ARG8L]](s32), [[ARG8H]](s32)
 
 ; ALL-NEXT: [[GADDR_A1:%[0-9]+]](p0) = G_GLOBAL_VALUE @a1_64bit
 ; ALL-NEXT: [[GADDR_A7:%[0-9]+]](p0) = G_GLOBAL_VALUE @a7_64bit
@@ -225,7 +227,7 @@ define i64 @test_i64_args_8(i64 %arg1, i64 %arg2, i64 %arg3, i64 %arg4,
 ; X64-NEXT: %rax = COPY [[ARG1]](s64)
 ; X64-NEXT: RET 0, implicit %rax
 
-; X32-NEXT: [[RETL:%[0-9]+]](s32), [[RETH:%[0-9]+]](s32) = G_EXTRACT [[ARG1:%[0-9]+]](s64), 0, 32
+; X32-NEXT: [[RETL:%[0-9]+]](s32), [[RETH:%[0-9]+]](s32) = G_UNMERGE_VALUES [[ARG1:%[0-9]+]](s64)
 ; X32-NEXT: %eax = COPY [[RETL:%[0-9]+]](s32)
 ; X32-NEXT: %edx = COPY [[RETH:%[0-9]+]](s32)
 ; X32-NEXT: RET 0, implicit %eax, implicit %edx
@@ -278,4 +280,21 @@ define double @test_double_args(double %arg1, double %arg2) {
 ; X32-NEXT:  RET 0, implicit %fp0
 
   ret double %arg2
+}
+
+define i32 * @test_memop_i32(i32 * %p1) {
+; ALL-LABEL:name:            test_memop_i32
+;X64    liveins: %rdi
+;X64:       %0(p0) = COPY %rdi
+;X64-NEXT:  %rax = COPY %0(p0)
+;X64-NEXT:  RET 0, implicit %rax
+
+;X32: fixedStack:
+;X32:  id: [[STACK0:[0-9]+]], offset: 0, size: 4, alignment: 16, isImmutable: true, isAliased: false }
+;X32:         %1(p0) = G_FRAME_INDEX %fixed-stack.[[STACK0]]
+;X32-NEXT:    %0(p0) = G_LOAD %1(p0) :: (invariant load 4 from %fixed-stack.[[STACK0]], align 0)
+;X32-NEXT:    %eax = COPY %0(p0)
+;X32-NEXT:    RET 0, implicit %eax
+
+  ret i32 * %p1;
 }

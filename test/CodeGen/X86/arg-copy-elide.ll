@@ -60,10 +60,8 @@ entry:
 ; CHECK: andl $-8, %esp
 ; CHECK-DAG: movl 8(%ebp), %[[csr1]]
 ; CHECK-DAG: movl 12(%ebp), %[[csr2]]
-; CHECK: movl %edi, 4(%esp)
-; CHECK: movl %esi, (%esp)
-; CEHCK: movl %esp, %eax
-; CHECK: pushl %eax
+; CHECK-DAG: leal 8(%ebp), %[[reg:[^ ]*]]
+; CHECK: pushl %[[reg]]
 ; CHECK: calll _addrof_i64
 ; CHECK-DAG: movl %[[csr1]], %eax
 ; CHECK-DAG: movl %[[csr2]], %edx
@@ -255,9 +253,7 @@ entry:
 ; CHECK: calll _addrof_i32
 ; CHECK: retl
 
-
 ; Don't elide the copy when the alloca is escaped with a store.
-
 define void @escape_with_store(i32 %x) {
   %x1 = alloca i32
   %x2 = alloca i32*
@@ -270,9 +266,8 @@ define void @escape_with_store(i32 %x) {
 }
 
 ; CHECK-LABEL: _escape_with_store:
-; CHECK-DAG: movl {{.*}}(%esp), %[[reg:[^ ]*]]
-; CHECK-DAG: movl $0, [[offs:[0-9]*]](%esp)
-; CHECK: movl %[[reg]], [[offs]](%esp)
+; CHECK: movl {{.*}}(%esp), %[[reg:[^ ]*]]
+; CHECK: movl %[[reg]], [[offs:[0-9]*]](%esp)
 ; CHECK: calll _addrof_i32
 
 

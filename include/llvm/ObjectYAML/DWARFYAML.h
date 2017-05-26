@@ -45,6 +45,7 @@ struct InitialLength {
 struct AttributeAbbrev {
   llvm::dwarf::Attribute Attribute;
   llvm::dwarf::Form Form;
+  llvm::yaml::Hex64 Value; // Some DWARF5 attributes have values
 };
 
 struct Abbrev {
@@ -99,6 +100,7 @@ struct Entry {
 struct Unit {
   InitialLength Length;
   uint16_t Version;
+  llvm::dwarf::UnitType Type; // Added in DWARF 5
   uint32_t AbbrOffset;
   uint8_t AddrSize;
   std::vector<Entry> Entries;
@@ -159,7 +161,7 @@ struct Data {
 } // namespace llvm::DWARFYAML
 } // namespace llvm
 
-LLVM_YAML_IS_SEQUENCE_VECTOR(uint8_t)
+LLVM_YAML_IS_FLOW_SEQUENCE_VECTOR(uint8_t)
 LLVM_YAML_IS_SEQUENCE_VECTOR(llvm::yaml::Hex64)
 LLVM_YAML_IS_SEQUENCE_VECTOR(llvm::StringRef)
 LLVM_YAML_IS_SEQUENCE_VECTOR(llvm::yaml::Hex8)
@@ -234,7 +236,7 @@ template <> struct MappingTraits<DWARFYAML::InitialLength> {
   static void mapping(IO &IO, DWARFYAML::InitialLength &DWARF);
 };
 
-#define HANDLE_DW_TAG(unused, name)                                            \
+#define HANDLE_DW_TAG(unused, name, unused2, unused3)                          \
   io.enumCase(value, "DW_TAG_" #name, dwarf::DW_TAG_##name);
 
 template <> struct ScalarEnumerationTraits<dwarf::Tag> {
@@ -264,7 +266,7 @@ template <> struct ScalarEnumerationTraits<dwarf::LineNumberExtendedOps> {
   }
 };
 
-#define HANDLE_DW_AT(unused, name)                                             \
+#define HANDLE_DW_AT(unused, name, unused2, unused3)                           \
   io.enumCase(value, "DW_AT_" #name, dwarf::DW_AT_##name);
 
 template <> struct ScalarEnumerationTraits<dwarf::Attribute> {
@@ -274,13 +276,23 @@ template <> struct ScalarEnumerationTraits<dwarf::Attribute> {
   }
 };
 
-#define HANDLE_DW_FORM(unused, name)                                           \
+#define HANDLE_DW_FORM(unused, name, unused2, unused3)                         \
   io.enumCase(value, "DW_FORM_" #name, dwarf::DW_FORM_##name);
 
 template <> struct ScalarEnumerationTraits<dwarf::Form> {
   static void enumeration(IO &io, dwarf::Form &value) {
 #include "llvm/Support/Dwarf.def"
     io.enumFallback<Hex16>(value);
+  }
+};
+
+#define HANDLE_DW_UT(unused, name)                                             \
+  io.enumCase(value, "DW_UT_" #name, dwarf::DW_UT_##name);
+
+template <> struct ScalarEnumerationTraits<dwarf::UnitType> {
+  static void enumeration(IO &io, dwarf::UnitType &value) {
+#include "llvm/Support/Dwarf.def"
+    io.enumFallback<Hex8>(value);
   }
 };
 

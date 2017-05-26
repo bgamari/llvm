@@ -40,10 +40,25 @@ class TypeDeserializer : public TypeVisitorCallbacks {
 public:
   TypeDeserializer() = default;
 
+  template <typename T> static Error deserializeAs(CVType &CVT, T &Record) {
+    MappingInfo I(CVT.content());
+    if (auto EC = I.Mapping.visitTypeBegin(CVT))
+      return EC;
+    if (auto EC = I.Mapping.visitKnownRecord(CVT, Record))
+      return EC;
+    if (auto EC = I.Mapping.visitTypeEnd(CVT))
+      return EC;
+    return Error::success();
+  }
+
   Error visitTypeBegin(CVType &Record) override {
     assert(!Mapping && "Already in a type mapping!");
     Mapping = llvm::make_unique<MappingInfo>(Record.content());
     return Mapping->Mapping.visitTypeBegin(Record);
+  }
+
+  Error visitTypeBegin(CVType &Record, TypeIndex Index) override {
+    return visitTypeBegin(Record);
   }
 
   Error visitTypeEnd(CVType &Record) override {

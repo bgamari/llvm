@@ -27,18 +27,14 @@ def MMX_X86movw2d : SDNode<"X86ISD::MMX_MOVW2D", SDTypeProfile<1, 1,
 //===----------------------------------------------------------------------===//
 
 def load_mmx : PatFrag<(ops node:$ptr), (x86mmx (load node:$ptr))>;
-def load_mvmmx : PatFrag<(ops node:$ptr),
-                         (x86mmx (MMX_X86movw2d (load node:$ptr)))>;
 
 //===----------------------------------------------------------------------===//
 // SSE specific DAG Nodes.
 //===----------------------------------------------------------------------===//
 
-def SDTX86VFCMP : SDTypeProfile<1, 3, [SDTCisFP<0>, SDTCisSameAs<1, 2>,
-                                       SDTCisFP<1>, SDTCisVT<3, i8>,
-                                       SDTCisVec<1>]>;
-def SDTX86CmpTestSae : SDTypeProfile<1, 3, [SDTCisVT<0, i32>, 
-                                     SDTCisSameAs<1, 2>, SDTCisInt<3>]>;
+def SDTX86VFCMP : SDTypeProfile<1, 3, [SDTCisFP<0>, SDTCisVec<0>,
+                                       SDTCisSameAs<0, 1>, SDTCisSameAs<1, 2>,
+                                       SDTCisVT<3, i8>]>;
 
 def X86fmin    : SDNode<"X86ISD::FMIN",      SDTFPBinOp>;
 def X86fmax    : SDNode<"X86ISD::FMAX",      SDTFPBinOp>;
@@ -278,7 +274,7 @@ def X86select  : SDNode<"X86ISD::SELECT",
                                              SDTCisSameNumEltsAs<0, 1>]>>;
 
 def X86selects : SDNode<"X86ISD::SELECTS",
-                        SDTypeProfile<1, 3, [SDTCisVT<1, i1>,
+                        SDTypeProfile<1, 3, [SDTCisVT<1, v1i1>,
                                              SDTCisSameAs<0, 2>,
                                              SDTCisSameAs<2, 3>]>>;
 
@@ -359,7 +355,6 @@ def SDTFmaRound : SDTypeProfile<1, 4, [SDTCisSameAs<0,1>,
 def X86PAlignr : SDNode<"X86ISD::PALIGNR", SDTShuff3OpI>;
 def X86VAlign  : SDNode<"X86ISD::VALIGN", SDTShuff3OpI>;
 
-def X86Abs      : SDNode<"X86ISD::ABS", SDTIntUnaryOp>;
 def X86Conflict : SDNode<"X86ISD::CONFLICT", SDTIntUnaryOp>;
 
 def X86PShufd  : SDNode<"X86ISD::PSHUFD", SDTShuff2OpI>;
@@ -446,7 +441,7 @@ def X86Vfpclass    : SDNode<"X86ISD::VFPCLASS",
                                             SDTCisSameNumEltsAs<0,1>,
                                             SDTCisVT<2, i32>]>, []>;
 def X86Vfpclasss   : SDNode<"X86ISD::VFPCLASSS",
-                       SDTypeProfile<1, 2, [SDTCisVT<0, i1>,
+                       SDTypeProfile<1, 2, [SDTCisVT<0, v1i1>,
                                             SDTCisFP<1>, SDTCisVT<2, i32>]>,[]>;
 
 def X86SubVBroadcast : SDNode<"X86ISD::SUBV_BROADCAST",
@@ -456,7 +451,7 @@ def X86SubVBroadcast : SDNode<"X86ISD::SUBV_BROADCAST",
 def X86VBroadcast : SDNode<"X86ISD::VBROADCAST", SDTVBroadcast>;
 def X86VBroadcastm : SDNode<"X86ISD::VBROADCASTM", SDTVBroadcastm>;
 def X86Vextract   : SDNode<"X86ISD::VEXTRACT",  SDTypeProfile<1, 2,
-                              [SDTCisEltOfVec<0, 1>, SDTCisVec<1>,
+                              [SDTCisVec<1>,
                                SDTCisPtrTy<2>]>, []>;
 
 def X86Blendi    : SDNode<"X86ISD::BLENDI",   SDTBlend>;

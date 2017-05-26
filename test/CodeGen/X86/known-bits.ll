@@ -173,8 +173,8 @@ define {i32, i1} @knownbits_uaddo_saddo(i64 %a0, i64 %a1) nounwind {
 ; X32-NEXT:    pushl %ebx
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %ecx
-; X32-NEXT:    leal (%ecx,%eax), %edx
-; X32-NEXT:    cmpl %ecx, %edx
+; X32-NEXT:    movl %ecx, %edx
+; X32-NEXT:    addl %eax, %edx
 ; X32-NEXT:    setb %bl
 ; X32-NEXT:    testl %eax, %eax
 ; X32-NEXT:    setns %al
@@ -197,10 +197,10 @@ define {i32, i1} @knownbits_uaddo_saddo(i64 %a0, i64 %a1) nounwind {
 ; X64-NEXT:    shlq $32, %rdi
 ; X64-NEXT:    shlq $32, %rsi
 ; X64-NEXT:    addq %rdi, %rsi
-; X64-NEXT:    setb %cl
+; X64-NEXT:    setb %al
 ; X64-NEXT:    seto %dl
-; X64-NEXT:    leal (%rsi,%rsi), %eax
-; X64-NEXT:    orb %cl, %dl
+; X64-NEXT:    orb %al, %dl
+; X64-NEXT:    xorl %eax, %eax
 ; X64-NEXT:    retq
   %1 = shl i64 %a0, 32
   %2 = shl i64 %a1, 32
@@ -226,19 +226,19 @@ define {i32, i1} @knownbits_usubo_ssubo(i64 %a0, i64 %a1) nounwind {
 ; X32-NEXT:    movl {{[0-9]+}}(%esp), %ecx
 ; X32-NEXT:    movl %ecx, %edx
 ; X32-NEXT:    subl %eax, %edx
-; X32-NEXT:    setns %bl
-; X32-NEXT:    cmpl %edx, %ecx
-; X32-NEXT:    setb %dh
-; X32-NEXT:    testl %ecx, %ecx
-; X32-NEXT:    setns %cl
-; X32-NEXT:    cmpb %bl, %cl
-; X32-NEXT:    setne %ch
+; X32-NEXT:    setb %bl
 ; X32-NEXT:    testl %eax, %eax
 ; X32-NEXT:    setns %al
+; X32-NEXT:    testl %ecx, %ecx
+; X32-NEXT:    setns %cl
 ; X32-NEXT:    cmpb %al, %cl
+; X32-NEXT:    setne %al
+; X32-NEXT:    testl %edx, %edx
+; X32-NEXT:    setns %dl
+; X32-NEXT:    cmpb %dl, %cl
 ; X32-NEXT:    setne %dl
-; X32-NEXT:    andb %ch, %dl
-; X32-NEXT:    orb %dh, %dl
+; X32-NEXT:    andb %al, %dl
+; X32-NEXT:    orb %bl, %dl
 ; X32-NEXT:    xorl %eax, %eax
 ; X32-NEXT:    popl %ebx
 ; X32-NEXT:    retl
@@ -247,11 +247,11 @@ define {i32, i1} @knownbits_usubo_ssubo(i64 %a0, i64 %a1) nounwind {
 ; X64:       # BB#0:
 ; X64-NEXT:    shlq $32, %rdi
 ; X64-NEXT:    shlq $32, %rsi
-; X64-NEXT:    subq %rsi, %rdi
-; X64-NEXT:    setb %cl
+; X64-NEXT:    cmpq %rsi, %rdi
+; X64-NEXT:    setb %al
 ; X64-NEXT:    seto %dl
-; X64-NEXT:    leal (%rdi,%rdi), %eax
-; X64-NEXT:    orb %cl, %dl
+; X64-NEXT:    orb %al, %dl
+; X64-NEXT:    xorl %eax, %eax
 ; X64-NEXT:    retq
   %1 = shl i64 %a0, 32
   %2 = shl i64 %a1, 32
